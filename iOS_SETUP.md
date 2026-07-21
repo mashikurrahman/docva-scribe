@@ -1,73 +1,94 @@
-# Anot.Health — iOS bring-up (on a Mac)
+# DOCVA — iOS bring-up & TestFlight
 
 This is the **Flutter** app (cross-platform). The iOS project lives in `ios/`.
-Everything below runs on **macOS only** (Xcode + iOS Simulator are macOS-only).
+All the app logic and the whole **Sharp Tech** UI (theme, Manrope font, DOCVA
+logo, status palette) live in shared Dart under `lib/`, so an iOS build picks
+up everything automatically — there is **no iOS-specific UI work to redo**.
 
-> ⚠️ Do **not** use the old native Android app at `Anot Android App/` for iOS —
-> that's Kotlin/Jetpack Compose and is Android-only. This Flutter project is the
-> cross-platform one.
+- Bundle id: `health.docva.app` · Display name: **DOCVA**
+- iOS export compliance, mic / Face ID / background-audio, and App Transport
+  Security are already declared in `ios/Runner/Info.plist`.
+- App icons for iOS are generated (`flutter_launcher_icons`, DOCVA mark).
 
-App bundle id: `com.anothealth.anot_scribe` · Display name: **Anot.Health**
+> You have **no Mac**, so the primary path is **Codemagic** (cloud macOS CI).
+> `codemagic.yaml` in the repo root already defines both workflows below.
+> The Mac-local instructions in §4 are only if you ever borrow a Mac.
 
 ---
 
-## 1. Prerequisites (install on the Mac)
-- **Xcode** (from the App Store) + command-line tools: `xcode-select --install`
-- **CocoaPods**: `sudo gem install cocoapods`
-- **Flutter SDK**: https://docs.flutter.dev/get-started/install/macos
-- Verify: `flutter doctor` (all green for iOS)
+## 1. What Codemagic already does (no edits needed)
+`codemagic.yaml` has two workflows, both building whatever is on `main`:
+1. **`ios-simulator-appetize`** — unsigned iOS Simulator build on every push to
+   `main`. **No Apple account needed.** Produces `Runner-simulator.app.zip` you
+   can drag into https://appetize.io to preview the DOCVA UI in a browser.
+2. **`ios-release`** — signed App Store / TestFlight build (manual trigger).
 
-## 2. Run on the iOS Simulator (fastest, no Apple account)
+## 2. One-time Apple + Codemagic setup (only YOU can do these)
+The signed workflow needs an Apple Developer account and two values wired in.
+
+1. **Apple Developer Program** — enroll ($99/yr) at https://developer.apple.com
+   if you haven't. (A free Apple ID only allows 7-day on-device installs, not
+   TestFlight.)
+2. **App Store Connect → create the app record**
+   - https://appstoreconnect.apple.com → Apps → **+** → New App
+   - Platform iOS, Bundle ID `health.docva.app` (register it under
+     Certificates, Identifiers & Profiles first if it isn't in the dropdown),
+     name **DOCVA**, your primary language, SKU (any unique string).
+   - Open the created app → **App Information** → copy the numeric **Apple ID**
+     (a ~10-digit number).
+3. **App Store Connect API key**
+   - App Store Connect → Users and Access → **Integrations / Keys** → App Store
+     Connect API → generate a key with **App Manager** role. Download the
+     `.p8` (one-time), note the **Key ID** and **Issuer ID**.
+4. **Add the key to Codemagic**
+   - Codemagic → Teams → your team → **Integrations → App Store Connect** →
+     add the key (upload `.p8`, paste Key ID + Issuer ID). Give the integration
+     a **name** (e.g. `docva-asc`).
+5. **Fill the two placeholders in `codemagic.yaml`** (then commit + push):
+   - line ~79: `app_store_connect: CODEMAGIC_ASC_KEY_NAME` → your integration
+     name from step 4 (e.g. `docva-asc`).
+   - line ~88: `APP_STORE_APPLE_ID: 0000000000` → the numeric Apple ID from
+     step 2.
+
+## 3. Ship a TestFlight build
+- Connect this repo (`docva-scribe`) as an app in Codemagic.
+- Run the **`ios-release`** workflow (manual start). Codemagic fetches/creates
+  the distribution cert + provisioning profile from the API key, builds a
+  signed IPA, auto-increments the build number, and uploads to **TestFlight**.
+- Add yourself/testers in App Store Connect → TestFlight; install via the
+  **TestFlight** app on the iPhone. Real mic/recording, background audio, and
+  Face ID only work on a **real device** (see §5), not the simulator.
+
+## 4. (Optional) Mac-local run
 ```bash
-cd anot_scribe
+cd docva
 flutter pub get
 cd ios && pod install && cd ..
-open -a Simulator          # boots an iOS Simulator
-flutter run                # builds + installs on the simulator
+open ios/Runner.xcworkspace     # WORKSPACE, not .xcodeproj
 ```
+In Xcode → Runner target → **Signing & Capabilities** → set your **Team**
+(auto-managed profile). Then `flutter run` on a booted Simulator or a wired
+iPhone.
 
-## 3. Run on a real iPhone (needs signing)
-```bash
-open ios/Runner.xcworkspace   # open the WORKSPACE, not the .xcodeproj
-```
-In Xcode → select the **Runner** target → **Signing & Capabilities** →
-- set your **Team** (a free Apple ID gives 7-day device installs; the $99/yr
-  Apple Developer Program is needed for TestFlight / App Store).
-- Xcode auto-manages the provisioning profile.
-Then plug in the iPhone and `flutter run` (or press ▶ in Xcode).
+## 5. Simulator CAN vs CANNOT test
+- ✅ UI, navigation, layout, login/vault flow, most logic.
+- ❌ **Real microphone / recording**, **background audio**, **Face ID hardware**
+  — these need a **real iPhone** (TestFlight or a wired device). Don't sign off
+  the recording engine on the simulator alone.
 
-## 4. Home-screen widget (WidgetKit) — manual one-time step
-The Android widget is done; iOS needs a **Widget Extension target** added in Xcode:
-1. Xcode → File → New → Target → **Widget Extension** (name e.g. `AnotWidget`).
-2. Add it to an **App Group** `group.com.anothealth.anot_scribe` (Signing &
-   Capabilities → + App Groups) on **both** the Runner and the widget target.
-3. Use the SwiftUI in `ios/AnotWidget/AnotWidget.swift` (already scaffolded) +
-   `home_widget`'s shared storage. See that file's README for the deep-link
-   scheme `anotscribe://record?patientId=<id>`.
-
-## 5. Capabilities already configured in this repo (verify they survive signing)
+## 6. Capabilities already configured (verify they survive signing)
 - `Info.plist`: `NSMicrophoneUsageDescription`, `NSFaceIDUsageDescription`,
-  App Transport Security (no cleartext), **`UIBackgroundModes: audio`**.
+  App Transport Security (no cleartext), **`UIBackgroundModes: audio`**, and
+  `ITSAppUsesNonExemptEncryption=false` (standard AES/TLS only → TestFlight
+  processes uploads without asking the export question each time).
 - `SceneDelegate.swift`: privacy **blur overlay** when backgrounded (iOS has no
-  `FLAG_SECURE`).
+  Android `FLAG_SECURE`).
 - Plugins pulling iOS pods: `record`, `flutter_foreground_task`, `just_audio`,
-  `local_auth`, `flutter_secure_storage`, `sqflite_sqlcipher`, `connectivity_plus`,
-  `path_provider`, `home_widget`, `wakelock_plus`, `encrypt`.
+  `local_auth`, `flutter_secure_storage`, `sqflite_sqlcipher`,
+  `connectivity_plus`, `path_provider`, `wakelock_plus`, `encrypt`.
 
-## 6. What the Simulator CAN vs CANNOT test
-- ✅ UI, navigation, layout, most logic, login/vault flow.
-- ❌ **Real microphone / recording**, **background audio**, **Face ID hardware**,
-  push — these need a **real iPhone** (TestFlight or a wired device). Don't sign
-  off the recording engine on the simulator alone.
-
-## 7. Production build (no demo logins)
-```bash
-flutter build ipa --release --dart-define=DEMO_ACCOUNTS=false
-```
-(omitting the flag keeps the seeded demo accounts for testing).
-
-## 8. Common fixes
+## 7. Common fixes
 - Pod errors: `cd ios && pod repo update && pod install`
 - Stale build: `flutter clean && flutter pub get && (cd ios && pod install)`
-- Min iOS: this project targets a modern iOS; bump `ios/Podfile` `platform :ios`
-  if a pod requires a higher floor (the error will name it).
+- Min iOS floor: bump `ios/Podfile` `platform :ios` if a pod requires a higher
+  version (the build error will name it).

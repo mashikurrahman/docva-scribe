@@ -1,10 +1,11 @@
-# Codemagic CI for the Anot.Health iOS app.
+# Codemagic CI for the DOCVA iOS app (bundle id health.docva.app).
 #
 # The app logic (recording, the long-recording session-timeout fix, offline
-# re-upload recovery, consent, notifications, clinician-only login, etc.) all
-# lives in shared Dart under lib/, so BOTH workflows below automatically build
-# whatever is on `main` — no iOS-specific edits are needed to pick up an Android
-# change. Current app version comes from pubspec.yaml (1.2.2+5 as of 2026-07-05).
+# re-upload recovery, consent, notifications, clinician-only login, etc.) and
+# the whole "Sharp Tech" UI (theme, Manrope font, DOCVA logo) live in shared
+# Dart under lib/, so BOTH workflows below automatically build whatever is on
+# `main` — no iOS-specific edits are needed to pick up an app change. Current
+# app version comes from pubspec.yaml (1.0.0+1).
 #
 # iOS-native pieces that support those features already live in the Xcode
 # project (Info.plist mic/Face ID/background-audio/ATS + export-compliance,

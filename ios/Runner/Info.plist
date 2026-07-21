@@ -9,13 +9,13 @@
 	     for local data protection), so this is `false` ("no non-exempt
 	     encryption"). This lets TestFlight process each upload automatically
 	     instead of pausing to ask the export-compliance question every build.
-	     If Anot Health ever adds proprietary/non-standard crypto, revisit this. -->
+	     If DOCVA ever adds proprietary/non-standard crypto, revisit this. -->
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<!-- Required: app records clinical consultation audio. Without this key iOS
 	     hard-crashes on first microphone access. -->
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Anot.Health records clinical consultations so they can be transcribed into your notes.</string>
+	<string>DOCVA records clinical consultations so they can be transcribed into your notes.</string>
 	<!-- Required for biometric (Face ID) PHI-vault unlock via local_auth. -->
 	<key>NSFaceIDUsageDescription</key>
 	<string>Face ID unlocks the encrypted vault that protects patient health information.</string>
